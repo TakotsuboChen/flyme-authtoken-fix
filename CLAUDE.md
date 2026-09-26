@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Cross-session handoff
+
+- On session start: read [HANDOFF.md](HANDOFF.md) fully, then summarize the previous session's goal, current state, and next step before proceeding.
+
 ## Project Overview
 
 `flyme-authtoken-fix` 是一个免费开源的 **LSPosed / Xposed 模块**（经典 `de.robv.android.xposed` API，`xposedminversion=93`，非 libxposed API 102），用于修复魅族 Flyme 系统 `com.android.server.accounts.AccountManagerService` 的私有 getAuthToken 频控缺陷 —— 该缺陷会使 GitHub Mobile（`com.github.android`）等应用被强制掉登。
@@ -37,17 +41,15 @@ Flyme 在 `AccountManagerService` 上私加了 `mRetryCount`(int) / `mLastRetryT
 ./build.sh        # → bin/FlymeAuthTokenFix.apk（bin/ 已被 .gitignore 排除）
 ```
 
-已验证的宿主环境：WSL2（项目位于 UNC 路径 `\\wsl.localhost\...`）+ Windows Android SDK 于 `/mnt/c/Android` + Linux JDK。
+**纯 Linux 环境**，不依赖任何 Windows 组件。已验证宿主：Linux（本机原生 SDK 于 `~/android-sdk`，build-tools 34/35/36.1/37、platforms 35/36/37）+ WSL2 的 Linux 侧。
 
-### 构建中的三个非显然坑（改 build.sh 前必读）
+### 构建中的注意点（改 build.sh 前必读）
 
-1. **`aapt2` 三模式择优**（`native` → `winexe` → `path`）：
-   - SDK 只带 `aapt2.exe`（Windows SDK）时走 `winexe`：经 `cmd.exe` 调 Windows 版。
-   - 项目在 UNC 路径下时 cmd.exe **无法以 UNC 为工作目录**，靠 `.bat` 里 `pushd` 让 cmd 自动映射临时盘符（`Z:` 之类），**所有项目内路径必须用 `%CD%` 前缀**引用（`win_path()` 负责），否则会拼出 `Z:\...\wsl.localhost\...` 这种废路径。
-   - 把整条 aapt2 命令写进临时 `.bat` 执行，是为了彻底绕开 `cmd.exe /c "..."` 的双引号剥离规则 —— 不要改回内联字符串。
-   - `path` 模式是兜底：Debian 的 `aapt2 2.19-debian` 远旧于现代 SDK，会报 `failed to load include path .../android.jar`（`RES_TABLE_TYPE_TYPE entry offsets overlap`）。见到这个报错说明落到了 `path` 模式。
-2. **`javac` 的 `-source 8 -target 8`** 会产生 bootstrap classpath 警告，属正常，不影响产物。
-3. **`de/robv/android/xposed/**` 是 compileOnly 桩类**（空实现），构建第 2 步 `rm -rf bin/classes/de` 把它们从 DEX 里剔除，运行时由 Xposed 框架注入真实现。仓库因此无需任何二进制依赖。
+1. **`aapt2` 优先取 SDK 自带版本**（版本与 build-tools 同源），只在 SDK 内缺失时才回落 `PATH`。Debian 打包的 `aapt` 是 `2.19-debian`，远旧于现代 SDK，解析 `android.jar` 会报 `RES_TABLE_TYPE_TYPE entry offsets overlap actual entry data`。
+2. **`aapt2 version` 把结果写到 stderr**，捕获版本号必须 `2>&1`（脚本用 `aapt2_ver()` 封装）。曾有 `2>/dev/null` 导致版本号显示为空的坑。
+3. **`javac` 的 `-source 8 -target 8`** 会产生 bootstrap classpath 警告，属正常，不影响产物。
+4. **`de/robv/android/xposed/**` 是 compileOnly 桩类**（空实现），构建第 2 步 `rm -rf bin/classes/de` 把它们从 DEX 里剔除，运行时由 Xposed 框架注入真实现。仓库因此无需任何二进制依赖。
+5. **platforms 默认取最高版**（本机为 `android-37`）。模块不使用新版 API，影响仅限于编译基线；要固定基线就显式传 `PLATFORM_VER`。
 
 ## 实测证据（docs/）
 

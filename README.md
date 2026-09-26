@@ -161,9 +161,9 @@ Flyme 的判断是 `elapsedRealtime() - mLastRetryTime < 500`。`SystemClock.ela
 
 | 依赖 | 说明 |
 | --- | --- |
-| JDK | 需 `javac` / `java` / `keytool`（已验证 JDK 17 可用） |
-| Android SDK | 需 `platforms/android-XX/android.jar` 与 `build-tools/<ver>/lib/{d8.jar,apksigner.jar}` |
-| `aapt2` | 见下方三种模式 |
+| 环境 | **Linux**（在 WSL2 的 Linux 侧同样适用，不依赖任何 Windows 组件） |
+| JDK | 需 `javac` / `java` / `keytool` |
+| Android SDK | 需 `platforms/<ver>/android.jar` 与 `build-tools/<ver>/{aapt2, lib/d8.jar, lib/apksigner.jar}` |
 | `zip` | 打包 `classes.dex` / `assets` |
 
 ### 一键构建
@@ -173,7 +173,7 @@ Flyme 的判断是 `elapsedRealtime() - mLastRetryTime < 500`。`SystemClock.ela
 # 产物：bin/FlymeAuthTokenFix.apk
 ```
 
-脚本会自动探测 SDK 位置（依次尝试 `$ANDROID_SDK`、`$ANDROID_SDK_ROOT`、`$ANDROID_HOME`、`~/Android/Sdk`、`/opt/android-sdk`、`/usr/lib/android-sdk`、`/mnt/c/Android`），并挑选**最高版本**的 `build-tools` 与 `platforms`。
+脚本会自动探测 SDK 位置（依次尝试 `$ANDROID_SDK`、`$ANDROID_SDK_ROOT`、`$ANDROID_HOME`、`~/android-sdk`、`~/Android/Sdk`、`/opt/android-sdk`、`/usr/lib/android-sdk`），并挑选**最高版本**的 `build-tools` 与 `platforms`。只有同时含 `android.jar` 与 `d8.jar` 的目录才会被认作有效 SDK。
 
 可用环境变量覆盖：
 
@@ -181,17 +181,18 @@ Flyme 的判断是 `elapsedRealtime() - mLastRetryTime < 500`。`SystemClock.ela
 ANDROID_SDK=/path/to/sdk BUILD_TOOLS_VER=35.0.0 PLATFORM_VER=android-36 ./build.sh
 ```
 
-### aapt2 的三种模式
+> ⚠️ 若本机有多个 `platforms` 版本，默认会取最高版（例如 `android-37`）。这对模块本身无影响（模块不用新版 API），但如果你想固定编译基线，建议显式传 `PLATFORM_VER`。
 
-脚本按 `native` → `winexe` → `path` 顺序择优，必要时会打印当前模式：
+### 关于 `aapt2`
 
-| 模式 | 场景 | 说明 |
-| --- | --- | --- |
-| `native` | SDK 内含宿主平台原生 `aapt2` | 最理想，版本与 build-tools 严格同源 |
-| `winexe` | **WSL 下** SDK 只有 `aapt2.exe` | 经 `cmd.exe` 调用 Windows 版；项目位于 UNC 路径（如 `\\wsl.localhost\...`）时借 `pushd` 的自动盘符映射绕过 cmd 的 UNC 限制 |
-| `path` | `PATH` 中有 `aapt2` | 兜底。⚠️ 发行版包（如 Debian 的 `2.19-debian`）往往远旧于 SDK，可能无法解析新版 `android.jar` |
+优先使用 SDK 自带的原生 `aapt2`（版本与 build-tools 严格同源）。仅当 SDK 内缺失时才回落到 `PATH` 中的 `aapt2`，并打印警告 —— 发行版包（如 Debian 的 `aapt 2.19-debian`）远旧于现代 SDK，解析新版 `android.jar` 会报：
 
-> 在 WSL 上遇到 `error: failed to load include path .../android.jar`，说明落到了 `path` 模式。解决办法：安装与 SDK 同源的 `aapt2` 到 build-tools，或确保 `path` 中不出现旧版 `aapt2`。
+```
+error: failed to load include path .../android.jar
+RES_TABLE_TYPE_TYPE entry offsets overlap actual entry data
+```
+
+见到这个报错，就说明脚本回落到了 `PATH` 中的旧版 `aapt2`，请给 SDK 装齐 build-tools。
 
 ### 构建流程
 
@@ -218,7 +219,7 @@ apksigner sign (bin/FlymeAuthTokenFix.apk，调试密钥首次自动生成)
 ```
 .
 ├── AndroidManifest.xml              # 模块声明：xposedmodule / xposedscope(见 res)
-├── build.sh                         # 一键构建（跨 Linux / WSL 自适应）
+├── build.sh                         # 一键构建（Linux）
 ├── src/main/
 │   ├── assets/xposed_init           # Xposed 入口类全限定名
 │   ├── res/values/
