@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Flyme AuthToken 修复器</string>
+    <!-- 现代 Xposed API 用 android:description 取代旧 xposeddescription meta-data -->
+    <string name="module_description">修复魅族 Flyme AccountManagerService 500ms 内超过 10 次调用导致 getAuthToken too frequently 抛错及 GitHub Mobile 等应用强制掉登的致命缺陷</string>
 </resources>

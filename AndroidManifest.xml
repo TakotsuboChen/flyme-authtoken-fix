@@ -8,18 +8,6 @@
 
     <application
         android:label="@string/app_name"
-        android:hasCode="true">
-        <meta-data
-            android:name="xposedmodule"
-            android:value="true" />
-        <meta-data
-            android:name="xposeddescription"
-            android:value="修复魅族 Flyme AccountManagerService 500ms 内超过 10 次调用导致 getAuthToken too frequently 抛错及 GitHub Mobile 等应用强制掉登的致命缺陷" />
-        <meta-data
-            android:name="xposedminversion"
-            android:value="93" />
-        <meta-data
-            android:name="xposedscope"
-            android:resource="@array/xposed_scope" />
-    </application>
+        android:description="@string/module_description"
+        android:hasCode="true" />
 </manifest>

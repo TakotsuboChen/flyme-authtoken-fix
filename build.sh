@@ -100,8 +100,11 @@ javac -encoding UTF-8 -source 8 -target 8 -cp "$SDK_JAR" \
     $(find src/main/java -name "*.java") \
     -d bin/classes
 
-echo "2. 剔除 Xposed Stub 类（仅编译期使用，不打包）..."
-rm -rf bin/classes/de
+echo "2. 剔除编译期桩类（仅用于 javac 类型检查，不打包）..."
+# io/github/libxposed/api/** 是 libxposed API 102 的桩，运行时由 LSPosed 框架注入真实现。
+# 保留在 DEX 里会与框架的实现类冲突（且 API 102 禁止用反射访问框架 API）。
+# 注意：只删 io/ 子树，不要删模块自身的 top/ 包。
+rm -rf bin/classes/io
 
 echo "3. 转换 class 为 DEX..."
 java -cp "$D8_JAR" com.android.tools.r8.D8 \
@@ -118,9 +121,12 @@ echo "5. 链接 APK..."
     bin/res_compiled/res.zip \
     -o bin/unaligned.apk --auto-add-overlay
 
-echo "6. 写入 classes.dex 与 assets..."
+echo "6. 写入 classes.dex 与 META-INF/xposed 元数据..."
 ( cd bin && zip -q -u unaligned.apk classes.dex )
-( cd src/main && zip -q -u "$PROJECT_DIR/bin/unaligned.apk" assets/xposed_init )
+# 现代 Xposed API 的模块元数据：java_init.list / module.prop / scope.list
+# （取代旧版的 assets/xposed_init 与 manifest 里的 xposed* meta-data）
+# 必须落在 APK 根的 META-INF/xposed/ 下，故从 src/main/resources 起打包
+( cd src/main/resources && zip -q -r -u "$PROJECT_DIR/bin/unaligned.apk" META-INF )
 
 echo "7. 生成调试签名（仅首次）..."
 if [ ! -f bin/debug.keystore ]; then

@@ -1,0 +1,20 @@
+# libxposed 模块配置（Java Properties 格式）
+# 官方字段语义：见 https://github.com/LSPosed/LSPosed/wiki/Develop-Xposed-Modules-Using-Modern-Xposed-API
+
+# 模块要求的最低 Xposed API 版本。本模块使用 API 102 的 setId()/detach()，
+# 且 API 102 起 libxposed 模块被禁止调用旧 de.robv.android.xposed API。
+minApiVersion=102
+
+# 目标 API 版本
+targetApiVersion=102
+
+# scope 固定：本模块只服务于 Flyme 的 system_server，不应被用户勾选到其他应用上。
+staticScope=true
+
+# hooker 异常处理模式。拦截器内部已自带 try/catch，这里再加一层框架级保护，
+# 确保任何意外都不会影响 system_server 的 getAuthToken 原流程。
+exceptionMode=protective
+
+# 不支持热重载（保持默认关闭）。本模块的 hook 无状态，若将来启用需
+# 在 onHotReloaded() 中处理旧句柄替换。
+autoHotReload=false
