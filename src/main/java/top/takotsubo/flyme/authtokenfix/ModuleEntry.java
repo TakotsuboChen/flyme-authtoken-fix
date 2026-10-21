@@ -154,10 +154,23 @@ public final class ModuleEntry extends XposedModule {
         }
     }
 
+    /**
+     * 诊断开关：为 true 时在热路径读取字段原值并打日志。
+     * 仅用于真机验证，验证完成后应改回 false（会破坏零分配约束）。
+     */
+    private static final boolean DIAGNOSTIC = false;
+
+    /**
+     * 修复开关：为 false 时只观测不修复（A/B 对照用）。
+     * 仅用于验证，验证完成后必须改回 true。
+     */
+    private static final boolean APPLY_FIX = true;
+
     /** 字段已就绪时的拦截器。热路径：两次字段写。 */
     private static final class FieldResetter implements XposedInterface.Hooker {
         private final Field retryCount;
         private final Field lastRetryTime;
+        private int calls;
 
         FieldResetter(Field retryCount, Field lastRetryTime) {
             this.retryCount = retryCount;
@@ -168,8 +181,21 @@ public final class ModuleEntry extends XposedModule {
         public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object ams = chain.getThisObject();
             try {
-                retryCount.setInt(ams, 0);
-                lastRetryTime.setLong(ams, 0L);
+                if (DIAGNOSTIC) {
+                    int rawCount = retryCount.getInt(ams);
+                    long rawLast = lastRetryTime.getLong(ams);
+                    calls++;
+                    // A/B 对照：记录全部调用的原始值，便于观察累积
+                    android.util.Log.i("FlymeAuthFix",
+                            "event=intercept call=" + calls
+                                    + " rawRetryCount=" + rawCount
+                                    + " rawLastRetryTime=" + rawLast
+                                    + " applyFix=" + APPLY_FIX);
+                }
+                if (APPLY_FIX) {
+                    retryCount.setInt(ams, 0);
+                    lastRetryTime.setLong(ams, 0L);
+                }
             } catch (Throwable ignored) {
                 // 静默降级：宁可钩子失效，也不干扰 system_server 原流程
             }
