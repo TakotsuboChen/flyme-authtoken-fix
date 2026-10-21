@@ -293,7 +293,8 @@ apksigner sign (bin/FlymeAuthTokenFix.apk，调试密钥首次自动生成)
 - **依赖 libxposed API 102 框架**（LSPosed 2.x / Vector）。旧版框架不会把本模块列为模块。
 - 依赖 `com.android.server.accounts.AccountManagerService` 的**私有字段名** `mRetryCount` / `mLastRetryTime`。若某 Flyme 版本改名，模块会**静默失效**（不会崩溃），日志里会是 `fieldsReady=false`，请提 Issue 并附 `adb shell dumpsys account` 与反编译片段。
 - 通过清除频控换取可用性，**理论上会放大异常应用的轮询压力**。若你在意功耗，可考虑改成更保守的策略（例如只在 `mRetryCount >= 8` 时才重置）—— 注意那需要读回字段值，会引入额外的字段读取。
-- 已在 Android 14 / API 34 基线的 Flyme 上定位缺陷；模块本身**尚未在真机上安装运行验证**（无 LSPosed 环境测试记录），日志格式为按代码推得的预期输出。
+- 已在 Android 14 / API 34 基线的 Flyme 上定位缺陷；**已真机验证**：MEIZU 20 / Flyme 12.6.0.0A / Android 16 / LSPosed 2.2.1 上注入成功，A/B 对照确认频控计数器被有效清零。§安装与使用 的日志样例仍为按代码推得的预期输出。
+- **安装时必须用 `adb install --no-incremental -r`**。默认的 Incremental Install 会让 LSPosed 记录临时路径，导致模块在 system_server 启动时解析失败并被静默跳过（无任何报错）。
 - 不支持 Hot Reload（`autoHotReload=false`）。
 
 ## 免责声明

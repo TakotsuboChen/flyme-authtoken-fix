@@ -81,6 +81,14 @@ Flyme 在 `AccountManagerService` 上私加了 `mRetryCount`(int) / `mLastRetryT
 - `github_mobile_logout_trigger.smali` —— GitHub Mobile 掉登触发点。
 - `logcat_evidence.log` —— 掉登现场日志切片，69 个 `--- Trigger point at line N ---` 分段（每段约 24 行上下文，围绕 `SimplifiedLoginActivity` 被反复拉起）。**不含 PII**，可安全公开；但新增日志切片前应重新做一遍 PII 扫描（手机号、android_id、邮箱、token）。
 
-## 未验证状态
+## 真机验证状态（2026-10-21 完成）
 
-模块**尚未在真机上安装运行过**。README §安装与使用 里的日志样例是**按代码推得的预期输出**，不是实测结果。真机验证后应回填实测日志。
+已在 MEIZU 20 / Flyme 12.6.0.0A / Android 16 (API 36) / LSPosed 2.2.1 上验证通过：
+
+- 注入成功：`event=module_loaded ... process=system systemServer=true`、`event=hooked result=ok count=1/1 fieldsReady=true`
+- **A/B 对照确证修复有效**：关闭修复（`APPLY_FIX=false`）时 `mRetryCount` 从 `0→1→…→9` 持续累积；开启修复时恒为 `0`。
+- `getAuthToken` 在该 ROM 上**只有一个重载**，签名 `(IAccountManagerResponse, Account, String, Z, Z, Bundle)V`，用 `dexdump` 核实，与 `count=1/1` 精确吻合。
+
+**安装模块时必须用 `adb install --no-incremental -r`**，否则 LSPosed 会记录 Incremental Install 的临时路径导致模块静默不加载。详见记忆 `lsposed-adb-incremental-install-breaks-module`。
+
+README §安装与使用 的日志样例仍为按代码推得，尚未回填实测输出。
